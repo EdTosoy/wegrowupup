@@ -1,91 +1,181 @@
-# NEST + ANGULAR  + TAILWIND MONOREPO SETUP
+# Nx Angular + NestJS + Tailwind Starter Template
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+Clean Nx workspace for full-stack apps with Angular, NestJS, and Tailwind CSS. Uses modern Angular 17+ patterns with `httpResource` and a scalable library setup.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+---
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/js?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+## Project Setup
 
-## Generate a library
+### Create Workspace
 
-```sh
-npx nx g @nx/js:lib packages/pkg1 --publishable --importPath=@my-org/pkg1
+```bash
+npx create-nx-workspace@latest <project-name> --preset=ts --workspaces=false
 ```
 
-## Run tasks
+### Add NestJS App
 
-To build the library use:
-
-```sh
-npx nx build pkg1
+```bash
+npx nx add @nx/nest
+npx nx g @nx/nest:app apps/api
 ```
 
-To run any task with Nx use:
+### Add Angular App
 
-```sh
-npx nx <target> <project-name>
+```bash
+npx nx add @nx/angular
+npx nx g @nx/angular:app apps/web
 ```
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+### Create Data Access Library
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Use Nx CLI to generate a library for all API services:
 
-## Versioning and releasing
-
-To version and release the library use
-
-```
-npx nx release
+```bash
+npx nx g @nx/angular:lib data-access --directory=libs
 ```
 
-Pass `--dry-run` to see what would happen without actually releasing the library.
+This will create:
 
-[Learn more about Nx release &raquo;](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Set up CI!
-
-### Step 1
-
-To connect to Nx Cloud, run the following command:
-
-```sh
-npx nx connect
+```
+libs/data-access/src/lib/
 ```
 
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
+You can add services and InjectionTokens here.
 
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+### Set Up Proxy
 
-### Step 2
+Create `apps/web/proxy.conf.json`:
 
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
+```json
+{
+  "/api": {
+    "target": "http://localhost:3000",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  }
+}
 ```
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Update `apps/web/project.json` under `targets.serve.options`:
 
-## Install Nx Console
+```json
+{
+  "dependsOn": ["api:serve"],
+  "proxyConfig": "apps/web/proxy.conf.json"
+}
+```
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+### Add Tailwind
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+```bash
+npm install tailwindcss @tailwindcss/postcss postcss
+```
 
-## Useful links
+Create `.postcssrc.json` in the root:
 
-Learn more:
+```json
+{  "plugins": { "@tailwindcss/postcss": {} } }
+```
 
-- [Learn more about this workspace setup](https://nx.dev/nx-api/js?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Import Tailwind in `apps/web/src/styles.css`:
 
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+```css
+@import "tailwindcss";
+```
+
+---
+
+## Data Access Library Example
+
+### InjectionToken
+
+```ts
+// libs/data-access/src/lib/tokens/api-base.token.ts
+import { InjectionToken } from '@angular/core';
+export const API_BASE_URL = new InjectionToken<string>('API_BASE_URL');
+```
+
+### ApiClient Service
+
+```ts
+// libs/data-access/src/lib/api-client.service.ts
+import { Injectable, inject } from '@angular/core';
+import { API_BASE_URL } from './tokens/api-base.token';
+
+@Injectable({ providedIn: 'root' })
+export class ApiClientService {
+  base = inject(API_BASE_URL);
+}
+```
+
+### Domain Service Example
+
+```ts
+// libs/data-access/src/lib/users.service.ts
+import { Injectable, inject } from '@angular/core';
+import { httpResource } from '@angular/common/http';
+import { User } from '@wegrowupupup/datatypes';
+import { ApiClientService } from './api-client.service';
+
+@Injectable({ providedIn: 'root' })
+export class UsersService {
+  private api = inject(ApiClientService);
+  users = httpResource<User[]>(() => this.api.base + '/users');
+}
+```
+
+### Using in a Component
+
+```ts
+import { Component, inject } from '@angular/core';
+import { UsersService } from '@wegrowupupup/data-access';
+
+@Component({
+  selector: 'app-root',
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.css']
+})
+export class AppComponent {
+  protected usersService = inject(UsersService);
+  protected users = this.usersService.users;
+}
+```
+
+### Provide API Base in appConfig
+
+```ts
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { appRoutes } from './app.routes';
+import { API_BASE_URL } from '@wegrowupupup/data-access';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideHttpClient(),
+    provideRouter(appRoutes),
+    { provide: API_BASE_URL, useValue: '/api' },
+  ],
+};
+```
+
+---
+
+## Development Workflow
+
+```bash
+nx serve web
+```
+
+* Starts NestJS API and Angular app together
+* `/api` requests are proxied automatically
+
+---
+
+## Summary
+
+* Nx workspace with Angular + NestJS + Tailwind
+* Scalable API client library using `httpResource`
+* Domain-specific services inside `libs/data-access`
+* InjectionToken for API base, easy to override
+* Components stay clean and declarative
